@@ -76,23 +76,26 @@
 
  ### Custom exceptions
  
-	- GameOverException
-	- TooMuchShotException
-	- NotYourTurnException
-	- UniqueConstraintException
-	- NotFoundUserException
-	- EntityNotFoundException
+	- GameOverException: is thrown if  winner has already been specified. Further salvo is not allowed after that point.
+	- TooMuchShotException : is thrown if requested number of shots bigger than shot right of  the player
+	- NotYourTurnException: is thrown if player doesn't wait for other player move. 
+	- UniqueConstraintException: is thrown if player information is used before.
+	- NotFoundUserException : is thrown if there is no player appropriate  with user id in the game. 
+	- EntityNotFoundException: is thrown if get game is requested with non-existing   game id.
   		
  ### Additional Assumptions
     ** If shot hit to part of own spaceship, salvo type counted as MISS shot. **
     ** For viewing the status of the game,  userID also needed in get request for responsing more sensible way. **
  
 ## Delivered Items
-	- Source code
+	- Source code both UI(name:Xebialab) and Backend(name:Craftmanship)
 	- Xebialab.jar : for running UI
 	- Craftmanship.jar : for running backend apis
 	- run.bat: for automatically running the application.
 	- README.md : it is under the root of project or can be found in github link
 	
 ## Link
+
 github repository link: https://github.com/SinemKalay/Craftsmanship
+
+you can also import my postman test collection via https://www.getpostman.com/collections/45918c020bfdc3a5718e

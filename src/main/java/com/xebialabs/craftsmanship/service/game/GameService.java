@@ -220,7 +220,7 @@ public class GameService implements IGameService {
             gameDO.setPlayerWon(isPlayerWin(attackedPlayerDO) ? attackerPlayerDO.getUserID() : null);
             gameDO = gameRepository.save(gameDO);
 
-            return SalvoMapper.createSalvoResponseDTO(salvoList, gameDO.getPlayerTurn());
+            return SalvoMapper.createSalvoResponseDTO(salvoList, gameDO.getPlayerTurn(), gameDO.getPlayerWon());
         }
 
         throw new TooMuchShotException("Number of shots can not be more than spaceships you have!");

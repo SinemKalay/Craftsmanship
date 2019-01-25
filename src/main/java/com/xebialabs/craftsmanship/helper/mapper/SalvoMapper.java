@@ -21,10 +21,12 @@ public class SalvoMapper {
         return salvoMap;
     }
 
-    public static SalvoResponseDTO createSalvoResponseDTO(List<SalvoDO> salvoList, String playerTurn) {
+    public static SalvoResponseDTO createSalvoResponseDTO(List<SalvoDO> salvoList, String playerTurn, String winner) {
         Map<String, String> salvoMap = createSalvoMap(salvoList);
         Map<String, String> game = new HashMap<>();
-        game.put("player_turn", playerTurn);
+
+       if(winner==null){game.put("player_turn", playerTurn);}
+       else{game.put("won", winner);}
 
         return new SalvoResponseDTO(salvoMap, game);
     }
