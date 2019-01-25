@@ -56,7 +56,7 @@ public class GameService implements IGameService {
     @Override
     public CreateGameResponseDTO createGame(CreateGameRequestDTO createGameRequestDTO) throws UniqueConstraintException {
 
-        PlayerDO self = lookForPlayer("player", "Assessment PlayerDO");
+        PlayerDO self = lookForPlayer("player"+(gameMap.size()+1), "Assessment PlayerDO"+(gameMap.size()+1));
 
         PlayerDO opponent = lookForPlayer(createGameRequestDTO.getUserId(), createGameRequestDTO.getFullName());
         GameDO gameDO = saveGameInstance(generateGameID(), self, opponent, createGameRequestDTO.getSpaceshipProtocolDO());
@@ -424,7 +424,7 @@ public class GameService implements IGameService {
      */
     private String generateGameID() {
 
-        return ConstantValues.GAME_ID + gameMap.size() + 1;
+        return ConstantValues.GAME_ID +(gameMap.size() + 1);
 
     }
 
