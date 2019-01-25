@@ -53,6 +53,6 @@ public class CustomizedResponseEntityExceptionHandler extends ResponseEntityExce
     public final ResponseEntity<ErrorDetails> handleGameOverException(GameOverException ex,  WebRequest webRequest) {
         ErrorDetails errorDetails = new ErrorDetails(new Date(), ex.getMessage(),
                 webRequest.getDescription(false));
-        return new ResponseEntity<>(errorDetails, HttpStatus.NOT_ACCEPTABLE);
+        return new ResponseEntity<>(errorDetails, HttpStatus.NOT_FOUND);
     }
 }

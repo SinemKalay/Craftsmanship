@@ -9,7 +9,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
-import java.util.Map;
 
 @RestController
 @RequestMapping("xl-spaceship/user")
@@ -20,8 +19,8 @@ public class UserController {
     private IGameService iGameService;
 
     @GetMapping("/game/{gameID}")
-    public ResponseEntity<Object> getGame(@PathVariable String gameID, @RequestBody Map<String, String> userIDInput) throws NotFoundUserException, EntityNotFoundException {
-        return new ResponseEntity<>(iGameService.getGame(gameID, userIDInput.get("user_id")), HttpStatus.OK);
+    public ResponseEntity<Object> getGame(@PathVariable String gameID, @RequestParam String userID) throws NotFoundUserException, EntityNotFoundException {
+        return new ResponseEntity<>(iGameService.getGame(gameID, userID), HttpStatus.OK);
     }
 
     @PutMapping("/game/{gameID}/fire")

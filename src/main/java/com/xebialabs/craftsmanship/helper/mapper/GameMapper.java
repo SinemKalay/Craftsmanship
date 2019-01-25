@@ -23,8 +23,9 @@ public class GameMapper {
 
     private static String[][] convertListToBoard(List<Coordinate> knownPlaces) {
         String[][] board = new String[GRID_HEIGHT][GRID_WIDTH];
-        knownPlaces.stream().forEach(p -> board[p.getRow()][p.getColumn()] = p.getContent());
-
+        if(knownPlaces!=null) {
+            knownPlaces.stream().forEach(p -> board[p.getRow()][p.getColumn()] = p.getContent());
+        }
         return board;
     }
 
