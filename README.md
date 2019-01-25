@@ -18,7 +18,7 @@
 	-Persistance Layer: The layer comminicate with DB.In Craftmanship application, H2 in-memory database is used
 	for providing effortless setup for interviwers. Thanks to Spring Boot, CRUDRepository interface is provided and it is used for saving/creating/getting data between layers.
 
-	- Custom Exceptions: Custoom object are created for giving user more friendly experience with service apis.(TooMuchShotException,NotYourTurnException etc.) Exception handling provided with 
+	- Custom Exceptions: Custoom object are created for giving user more friendly experience with service apis.(TooMuchShotException,NotYourTurnException etc.) Exception handling provided by using ControllerAdvice and ExceptionHandler interfaces.
 	
 	- Domain Objects, DTO objects(Data Transfer Object), and mapper for transfering object between layers
 
