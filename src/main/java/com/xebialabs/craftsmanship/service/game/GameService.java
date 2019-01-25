@@ -175,19 +175,25 @@ public class GameService implements IGameService {
      * @param gameID          String to get match grid
      * @param salvoRequestDTO SalvoRequestDTO to get salvo coordinates
      * @return SalvoResponseDTO
+     * @return SalvoResponseDTO
      * @throws EntityNotFoundException if there is no game has gameID equals to received gameID
      * @throws TooMuchShotException    if requested number bigger from shot right
      */
     @Override
-    public SalvoResponseDTO fire(String gameID, SalvoRequestDTO salvoRequestDTO, boolean isSelfUser) throws EntityNotFoundException, TooMuchShotException, NotYourTurnException {
+    public SalvoResponseDTO fire(String gameID, SalvoRequestDTO salvoRequestDTO, boolean isSelfUser) throws EntityNotFoundException, TooMuchShotException, NotYourTurnException, GameOverException {
         GameDO gameDO = gameRepository.findByGameID(gameID).orElseThrow(() -> new EntityNotFoundException("Couldn't find any game with given game id"));
-        int playerIndex = isSelfUser ? 0 : 1;
-        PlayerDO playerDO = gameDO.getPlayers().get(playerIndex);
+        SalvoResponseDTO salvoResponseDTO = null;
 
-        SalvoResponseDTO salvoResponseDTO=null;
+        if (gameDO.getPlayerWon() == null) {
+            int playerIndex = isSelfUser ? 0 : 1;
+            PlayerDO playerDO = gameDO.getPlayers().get(playerIndex);
 
-        if (isPlayerTurn(gameDO.getPlayerTurn(), playerDO.getUserID())) {
-            salvoResponseDTO = firingUp(gameDO, salvoRequestDTO.getSalvo(), playerIndex, playerDO);
+            if (isPlayerTurn(gameDO.getPlayerTurn(), playerDO.getUserID())) {
+                salvoResponseDTO = firingUp(gameDO, salvoRequestDTO.getSalvo(), playerIndex, playerDO);
+            }
+        }
+        else{
+            throw new GameOverException("Game over! Could not shot anymore!");
         }
 
         return salvoResponseDTO;
@@ -204,18 +210,29 @@ public class GameService implements IGameService {
     }
 
     private SalvoResponseDTO firingUp(GameDO gameDO, List<String> salvoHex, int playerIndex, PlayerDO playerDO) throws TooMuchShotException {
-        if (canFire(playerDO.getShotRight(), salvoHex.size())) {
+        if (isShotNumberOk(playerDO.getShotRight(), salvoHex.size())) {
             List<SalvoDO> salvoList = createSalvoList(gameDO.getGridDO().getTaken(), gameDO.getGridDO().getFree(), salvoHex, playerDO);
             List<SalvoDO> salvoDOS = updateSalvoList(gameDO.getPlayers().get(playerIndex), salvoList);
 
-            gameDO.getPlayers().get(playerIndex).setSalvoDOs(salvoDOS);
-            gameDO.setPlayerTurn((playerIndex == 0 ? gameDO.getPlayers().get(1) : gameDO.getPlayers().get(0)).getUserID());
+            PlayerDO attackerPlayerDO = gameDO.getPlayers().get(playerIndex);
+            attackerPlayerDO.setSalvoDOs(salvoDOS);
+
+            PlayerDO attackedPlayerDO = playerIndex == 0 ? gameDO.getPlayers().get(1) : gameDO.getPlayers().get(0);
+
+            gameDO.setPlayerTurn(attackedPlayerDO.getUserID());
+            gameDO.setPlayerWon(isPlayerWin(attackedPlayerDO) ? attackerPlayerDO.getUserID() : null);
             gameDO = gameRepository.save(gameDO);
 
             return SalvoMapper.createSalvoResponseDTO(salvoList, gameDO.getPlayerTurn());
         }
 
         throw new TooMuchShotException("Number of shots can not be more than spaceships you have!");
+
+    }
+
+    private boolean isPlayerWin(PlayerDO attackedPlayerDO) {
+        List<Spaceship> spaceships = attackedPlayerDO.getSpaceShips();
+        return spaceships.stream().filter(s -> s.getLife() == 0).count() > 0 ? true : false;
 
     }
 
@@ -239,7 +256,7 @@ public class GameService implements IGameService {
      * @return boolean for can fire or not
      * @throws TooMuchShotException if requested number bigger from shot right
      */
-    public boolean canFire(int shotRightOfPlayer, int numberOfShots) throws TooMuchShotException {
+    public boolean isShotNumberOk(int shotRightOfPlayer, int numberOfShots) throws TooMuchShotException {
 
         if (numberOfShots > shotRightOfPlayer) {
             throw new TooMuchShotException("Number of shots can not be more than spaceships you have!");
@@ -298,6 +315,7 @@ public class GameService implements IGameService {
         if (!isOwner(taken, indexInList, coordinate, playerDO.getUserID())) {
             salvoDO = checkSalvoType(taken.get(indexInList));
             updateListField(taken, indexInList, HIT_QUADRANT);
+
         } else {
             salvoDO = new SalvoDO(taken.get(indexInList), SalvoTypeEnum.MISS);
             salvoDO.setHitOwnSpaceship(true);
@@ -437,7 +455,7 @@ public class GameService implements IGameService {
         opponent.setGameDO(gameDO);
         opponent.setShotRight(opponent.getSpaceShips().size());
 
-        String playerTurn=pickStartingPlayer(gameDO.getPlayers());
+        String playerTurn = pickStartingPlayer(gameDO.getPlayers());
         gameDO.setStarting(playerTurn);
         gameDO.setPlayerTurn(playerTurn);
         return gameDO;

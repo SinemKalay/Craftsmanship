@@ -48,4 +48,11 @@ public class CustomizedResponseEntityExceptionHandler extends ResponseEntityExce
                 webRequest.getDescription(false));
         return new ResponseEntity<>(errorDetails, HttpStatus.UNAUTHORIZED);
     }
+
+    @ExceptionHandler(GameOverException.class)
+    public final ResponseEntity<ErrorDetails> handleGameOverException(GameOverException ex,  WebRequest webRequest) {
+        ErrorDetails errorDetails = new ErrorDetails(new Date(), ex.getMessage(),
+                webRequest.getDescription(false));
+        return new ResponseEntity<>(errorDetails, HttpStatus.NOT_ACCEPTABLE);
+    }
 }

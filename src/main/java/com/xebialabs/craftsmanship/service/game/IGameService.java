@@ -18,5 +18,5 @@ public interface IGameService {
 
     GetGameResponseDTO getGame(String gameID, String id) throws EntityNotFoundException, NotFoundUserException;
 
-    SalvoResponseDTO fire(String gameID, SalvoRequestDTO salvoRequestDTO, boolean isSelfUser) throws EntityNotFoundException, TooMuchShotException, NotYourTurnException;
+    SalvoResponseDTO fire(String gameID, SalvoRequestDTO salvoRequestDTO, boolean isSelfUser) throws EntityNotFoundException, TooMuchShotException, NotYourTurnException, GameOverException;
 }
