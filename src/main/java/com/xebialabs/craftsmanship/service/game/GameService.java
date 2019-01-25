@@ -23,9 +23,6 @@ import java.util.*;
 
 import static com.xebialabs.craftsmanship.helper.ConstantValues.*;
 
-
-//TODO: check player turn fire service
-
 @Service
 public class GameService implements IGameService {
 

@@ -44,8 +44,6 @@ public class GameDO {
     @JoinColumn(name = "protocol_ID")
     private SpaceshipProtocolDO spaceshipProtocolDO;
 
-    //TODO: player turn field add
-
     public GameDO(){}
     public GameDO(String gameID, PlayerDO self, PlayerDO opponent, SpaceshipProtocolDO spaceshipProtocolDO) {
 
@@ -54,9 +52,6 @@ public class GameDO {
         this.players= new ArrayList<>();
         players.addAll(Arrays.asList(new PlayerDO[]{self, opponent}));
 
-//        players=new HashMap<>();
-//        players.put(SELF,self);
-//        players.put(OPPONENT,opponent);
     }
 
     public Long getId() {

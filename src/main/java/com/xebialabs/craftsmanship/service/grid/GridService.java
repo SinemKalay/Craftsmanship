@@ -149,7 +149,6 @@ public class GridService implements IGridService {
 
             if (areGridCoordinatesAvailableForSpaceship(gridDO, spaceship)) {
                 found = true;
-                //TODO: check whether it works fine
                 assignGridDOSpaceship(gridDO, spaceship.getCoordinates());
                 for (Coordinate coordinate : spaceship.getCoordinates()) {
                     if (coordinate.getColumn() < 0 || coordinate.getRow() < 0) {
