@@ -1,6 +1,7 @@
 package com.xebialabs.craftsmanship.service.game;
 
 import com.xebialabs.craftsmanship.dataAccessObject.GameRepository;
+import com.xebialabs.craftsmanship.dataAccessObject.PlayerRepository;
 import com.xebialabs.craftsmanship.dataTransferObjects.request.CreateGameRequestDTO;
 import com.xebialabs.craftsmanship.dataTransferObjects.request.SalvoRequestDTO;
 import com.xebialabs.craftsmanship.dataTransferObjects.response.CreateGameResponseDTO;
@@ -10,8 +11,7 @@ import com.xebialabs.craftsmanship.domainObject.*;
 import com.xebialabs.craftsmanship.domainObject.spaceships.Spaceship;
 import com.xebialabs.craftsmanship.helper.ConstantValues;
 import com.xebialabs.craftsmanship.helper.SalvoTypeEnum;
-import com.xebialabs.craftsmanship.helper.exception.EntityNotFoundException;
-import com.xebialabs.craftsmanship.helper.exception.TooMuchShotException;
+import com.xebialabs.craftsmanship.helper.exception.*;
 import com.xebialabs.craftsmanship.helper.mapper.GameMapper;
 import com.xebialabs.craftsmanship.helper.mapper.SalvoMapper;
 import com.xebialabs.craftsmanship.service.grid.GridService;
@@ -19,14 +19,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 
-import static com.xebialabs.craftsmanship.helper.ConstantValues.HIT_QUADRANT;
-import static com.xebialabs.craftsmanship.helper.ConstantValues.MISSED_QUADRANT;
-import static com.xebialabs.craftsmanship.helper.ConstantValues.NOT_HIT_QUADRANT;
+import static com.xebialabs.craftsmanship.helper.ConstantValues.*;
+
+
+//TODO: check player turn fire service
 
 @Service
 public class GameService implements IGameService {
@@ -39,14 +37,15 @@ public class GameService implements IGameService {
     GameRepository gameRepository;
 
     @Autowired
+    PlayerRepository playerRepository;
+
+    @Autowired
     GridService gridService;
 
     public GameService(final GameRepository gameRepository, final GridService gridService) {
         this.gameRepository = gameRepository;
         this.gridService = gridService;
     }
-
-    //TODO: spaceships can be placed as rotated
 
     /**
      * Save game instance which is created with all spaceships and grid components
@@ -55,14 +54,33 @@ public class GameService implements IGameService {
      * @return CreateGameResponseDTO will be returned appropriate type in requirements doc.
      */
     @Override
-    public CreateGameResponseDTO createGame(CreateGameRequestDTO createGameRequestDTO) {
+    public CreateGameResponseDTO createGame(CreateGameRequestDTO createGameRequestDTO) throws UniqueConstraintException {
 
-        PlayerDO self = new PlayerDO("player", "Assessment PlayerDO");
-        PlayerDO opponent = new PlayerDO(createGameRequestDTO.getUserId(), createGameRequestDTO.getFullName());
+        PlayerDO self = lookForPlayer("player", "Assessment PlayerDO");
 
+        PlayerDO opponent = lookForPlayer(createGameRequestDTO.getUserId(), createGameRequestDTO.getFullName());
         GameDO gameDO = saveGameInstance(generateGameID(), self, opponent, createGameRequestDTO.getSpaceshipProtocolDO());
+        gameMap.put(gameDO.getGameID(), gameDO);
 
         return this.generateCreatedGameResponse(gameDO);
+
+    }
+
+    /**
+     * returns player if exist in DB if not returns new player instance
+     *
+     * @param userId   search param
+     * @param fullName search param
+     * @return player instance
+     * @throws UniqueConstraintException if received json contains existing player
+     */
+    private PlayerDO lookForPlayer(String userId, String fullName) throws UniqueConstraintException {
+        Optional<PlayerDO> playerDO = playerRepository.findByUserIDAndFullName(userId, fullName);
+        if (!playerDO.isPresent()) {
+            return new PlayerDO(userId, fullName);
+        } else {
+            throw new UniqueConstraintException("Please try with different player information");
+        }
     }
 
     /**
@@ -89,12 +107,10 @@ public class GameService implements IGameService {
      */
     private CreateGameResponseDTO generateCreatedGameResponse(GameDO gameDO) {
 
-        CreateGameResponseDTO createGameResponseDTO = new CreateGameResponseDTO(gameDO.getPlayers().get(0).getUserID(), gameDO.getPlayers().get(1).getFullName(), gameDO.getGameID(), gameDO.getStarting());
+        CreateGameResponseDTO createGameResponseDTO = new CreateGameResponseDTO(gameDO.getPlayers().get(0).getUserID(), gameDO.getPlayers().get(0).getFullName(), gameDO.getGameID(), gameDO.getStarting());
 
         return createGameResponseDTO;
     }
-
-    //TODO: user is suppossed to not able to see other player board
 
     /**
      * Get game by gameId and userID.
@@ -104,15 +120,53 @@ public class GameService implements IGameService {
      * @return GetGameResponseDTO will be returned appropriate type in requirements doc.
      */
     @Override
-    public GetGameResponseDTO getGame(String gameID, String userID) throws EntityNotFoundException {
+    public GetGameResponseDTO getGame(String gameID, String userID) throws EntityNotFoundException, NotFoundUserException {
 
         GameDO gameDO = gameRepository.findByGameID(gameID).orElseThrow(() -> new EntityNotFoundException("Couldn't find any game with given game id"));
-        String board = gridService.setBoard(gameDO.getGridDO());
+        PlayerDO playerDO = getPlayer(gameDO, userID);
+        List<Coordinate> placesOfSpaceships = placesOfSpaceships(playerDO.getSpaceShips());
+        List<Coordinate> knownPlaces = placesOfPlayerSalvo(playerDO.getSalvoDOs());
 
-        LOG.info("Game found with received game id:" + gameID);
+        return GameMapper.getGameResponseDTOMapper(gameDO.getPlayers(), placesOfSpaceships, knownPlaces);
+    }
 
+    /**
+     * returns coordinates of all spaceships that player has
+     *
+     * @param spaceships which belongs to the player
+     * @return places of all spaceships
+     */
+    private List<Coordinate> placesOfSpaceships(List<Spaceship> spaceships) {
+        List<Coordinate> knownPlaces = new ArrayList<>();
+        spaceships.stream().forEach(s -> knownPlaces.addAll(s.getCoordinates()));
 
-        return GameMapper.getGameResponseDTOMapper(gameDO, board);
+        return knownPlaces;
+    }
+
+    /**
+     * returns coordinates of all salvos which done by the player
+     * if salvo is hit own ship it not counted as known place.
+     *
+     * @param salvoDOS which belongs to the player
+     * @return List<Coordinate>
+     */
+    private List<Coordinate> placesOfPlayerSalvo(List<SalvoDO> salvoDOS) {
+        List<Coordinate> knownPlaces = new ArrayList<>();
+
+        salvoDOS.stream().filter(s -> !s.isHitOwnSpaceship()).forEach(s -> knownPlaces.add(s.getCoordinate()));
+
+        return knownPlaces;
+    }
+
+    /**
+     * returns player of game who has received userID
+     *
+     * @param gameDO Game
+     * @param userID of wanted player
+     * @return player appropriate to criterias
+     */
+    private PlayerDO getPlayer(GameDO gameDO, String userID) throws NotFoundUserException {
+        return gameDO.getPlayers().stream().filter(p -> p.getUserID().equals(userID)).findFirst().orElseThrow(() -> new NotFoundUserException("User not name has user id as " + userID));
     }
 
     /**
@@ -125,22 +179,55 @@ public class GameService implements IGameService {
      * @throws TooMuchShotException    if requested number bigger from shot right
      */
     @Override
-    public SalvoResponseDTO fire(String gameID, SalvoRequestDTO salvoRequestDTO, boolean isSelfUser) throws EntityNotFoundException, TooMuchShotException {
-
+    public SalvoResponseDTO fire(String gameID, SalvoRequestDTO salvoRequestDTO, boolean isSelfUser) throws EntityNotFoundException, TooMuchShotException, NotYourTurnException {
         GameDO gameDO = gameRepository.findByGameID(gameID).orElseThrow(() -> new EntityNotFoundException("Couldn't find any game with given game id"));
-        PlayerDO playerDO = isSelfUser ? gameDO.getPlayers().get(0) : gameDO.getPlayers().get(1);
+        int playerIndex = isSelfUser ? 0 : 1;
+        PlayerDO playerDO = gameDO.getPlayers().get(playerIndex);
 
-        if (canFire(playerDO.getShotRight(), salvoRequestDTO.getSalvo().size())) {
-            List<SalvoDO> salvoList = createSalvoList(gameDO.getGridDO().getTaken(), gameDO.getGridDO().getFree(), salvoRequestDTO.getSalvo(), playerDO);
-            gameDO.getPlayers().get(isSelfUser?0:1).setSalvoDOs(salvoList);
-            gameDO.setPlayerTurn((!isSelfUser ? gameDO.getPlayers().get(0) : gameDO.getPlayers().get(1)).getUserID());
+        SalvoResponseDTO salvoResponseDTO=null;
 
+        if (isPlayerTurn(gameDO.getPlayerTurn(), playerDO.getUserID())) {
+            salvoResponseDTO = firingUp(gameDO, salvoRequestDTO.getSalvo(), playerIndex, playerDO);
+        }
+
+        return salvoResponseDTO;
+
+    }
+
+    private boolean isPlayerTurn(String playerTurn, String userID) throws NotYourTurnException {
+
+        if (!playerTurn.equals(userID)) {
+            throw new NotYourTurnException("Please wait for opponent move! It is not your turn.");
+        }
+        return true;
+
+    }
+
+    private SalvoResponseDTO firingUp(GameDO gameDO, List<String> salvoHex, int playerIndex, PlayerDO playerDO) throws TooMuchShotException {
+        if (canFire(playerDO.getShotRight(), salvoHex.size())) {
+            List<SalvoDO> salvoList = createSalvoList(gameDO.getGridDO().getTaken(), gameDO.getGridDO().getFree(), salvoHex, playerDO);
+            List<SalvoDO> salvoDOS = updateSalvoList(gameDO.getPlayers().get(playerIndex), salvoList);
+
+            gameDO.getPlayers().get(playerIndex).setSalvoDOs(salvoDOS);
+            gameDO.setPlayerTurn((playerIndex == 0 ? gameDO.getPlayers().get(1) : gameDO.getPlayers().get(0)).getUserID());
             gameDO = gameRepository.save(gameDO);
 
             return SalvoMapper.createSalvoResponseDTO(salvoList, gameDO.getPlayerTurn());
         }
 
-        return null;
+        throw new TooMuchShotException("Number of shots can not be more than spaceships you have!");
+
+    }
+
+    private List<SalvoDO> updateSalvoList(PlayerDO playerDO, List<SalvoDO> salvoList) {
+        List<SalvoDO> salvoDOS = playerDO.getSalvoDOs();
+        if (salvoDOS != null) {
+            salvoDOS.addAll(salvoList);
+        } else {
+            salvoDOS = salvoList;
+        }
+
+        return salvoDOS;
     }
 
     /**
@@ -160,49 +247,77 @@ public class GameService implements IGameService {
         return true;
     }
 
-
     /**
      * Creates salvo list by checking every coordinate belongs to shot
      * If salvo shot run into attacker player spaceship it counted as miss
      *
      * @param taken      field in grid
      * @param shotsInHex come from DTO to be parse into coordinates
-     * @param playerDO attacker   player userID
+     * @param playerDO   attacker   player userID
      * @return salvo which contains list of shots
      */
-    private List<SalvoDO> createSalvoList(List<Coordinate> taken, List<Coordinate> free, List<String> shotsInHex, PlayerDO playerDO) {
+    private List<SalvoDO> createSalvoList
+    (List<Coordinate> taken, List<Coordinate> free, List<String> shotsInHex, PlayerDO playerDO) {
         List<Coordinate> shots = parseFiredCoordinates(shotsInHex);
         List<SalvoDO> salvoDOS = new ArrayList<>();
-        SalvoDO salvoDO;
-        int indexInList;
 
         for (Coordinate coordinate : shots) {
-            if (taken.contains(coordinate)) {
-                indexInList = indexInList(taken, coordinate);
-                if (!isOwner(taken, indexInList, coordinate, playerDO.getUserID())) {
-                    salvoDO = checkSalvoType(taken, taken.get(indexInList));
-                    updateListField(taken, indexInList, HIT_QUADRANT);
-
-                } else {
-                    salvoDO = new SalvoDO(coordinate, SalvoTypeEnum.MISS);
-                }
-            } else {
-                salvoDO = new SalvoDO(coordinate, SalvoTypeEnum.MISS);
-                indexInList = indexInList(free, coordinate);
-                updateListField(free, indexInList, MISSED_QUADRANT);
-            }
-            coordinate.setSalvoDO(salvoDO);
-            salvoDO.setPlayerDO(playerDO);
+            SalvoDO salvoDO = createSalvo(taken, free, coordinate, playerDO);
             salvoDOS.add(salvoDO);
         }
         return salvoDOS;
+    }
+
+    private SalvoDO createSalvo(List<Coordinate> taken, List<Coordinate> free, Coordinate
+            coordinate, PlayerDO playerDO) {
+        SalvoDO salvoDO;
+        if (taken.contains(coordinate)) {
+            salvoDO = shotHitATakenPlace(taken, coordinate, playerDO);
+        } else {
+            salvoDO = shotHitFreePlace(free, coordinate, playerDO);
+        }
+        salvoDO.setPlayerDO(playerDO);
+
+        return salvoDO;
+    }
+
+    private SalvoDO shotHitFreePlace(List<Coordinate> free, Coordinate coordinate, PlayerDO playerDO) {
+        SalvoDO salvoDO;
+        int indexInList = indexInList(free, coordinate);
+        updateListField(free, indexInList, MISSED_QUADRANT);
+        salvoDO = new SalvoDO(free.get(indexInList), SalvoTypeEnum.MISS);
+        salvoDO.setCoordinate(free.get(indexInList));
+        free.get(indexInList).setSalvoDO(salvoDO);
+
+        return salvoDO;
+    }
+
+    private SalvoDO shotHitATakenPlace(List<Coordinate> taken, Coordinate coordinate, PlayerDO playerDO) {
+        SalvoDO salvoDO;
+        int indexInList = indexInList(taken, coordinate);
+        if (!isOwner(taken, indexInList, coordinate, playerDO.getUserID())) {
+            salvoDO = checkSalvoType(taken.get(indexInList));
+            updateListField(taken, indexInList, HIT_QUADRANT);
+        } else {
+            salvoDO = new SalvoDO(taken.get(indexInList), SalvoTypeEnum.MISS);
+            salvoDO.setHitOwnSpaceship(true);
+        }
+        salvoDO.setCoordinate(taken.get(indexInList));
+        taken.get(indexInList).setSalvoDO(salvoDO);
+
+        return salvoDO;
     }
 
     private void updateListField(List<Coordinate> takenFreeFieldList, int index, String content) {
         takenFreeFieldList.get(index).setContent(content);
     }
 
-
+    /**
+     * checks whether attacker is the same person who has the spaceship on the coordinate of the shot
+     *
+     * @param taken fields
+     * @return index of shot's coordinate
+     */
     private int indexInList(List<Coordinate> taken, Coordinate coordinate) {
         for (int i = 0; i < taken.size(); i++) {
             if (taken.get(i).equals(coordinate)) {
@@ -212,6 +327,15 @@ public class GameService implements IGameService {
         return -1;
     }
 
+    /**
+     * checks whether attacker is the same person who has the spaceship on the coordinate of the shot
+     *
+     * @param taken        fields
+     * @param indexInTaken to find correct coordinate in list
+     * @param coordinate   of a shot
+     * @param attacker     - userID of attacker player
+     * @return true if attacker is the same person who does the shot
+     */
     public boolean isOwner(List<Coordinate> taken, int indexInTaken, Coordinate coordinate, String attacker) {
 
         if (taken.get(indexInTaken).equals(coordinate)) {
@@ -229,18 +353,30 @@ public class GameService implements IGameService {
      * @param coordinate of shot
      * @return salvoDO
      */
-    private SalvoDO checkSalvoType(List<Coordinate> taken, Coordinate coordinate) {
+    private SalvoDO checkSalvoType(Coordinate coordinate) {
         SalvoDO salvoDO = new SalvoDO(coordinate, SalvoTypeEnum.MISS);
         if (coordinate.getContent().equals(NOT_HIT_QUADRANT)) {
             Spaceship spaceship = coordinate.getSpaceshipDO();
             spaceship.setLife(spaceship.getLife() - 1);
             if (spaceship.getLife() == 0) {
                 salvoDO = new SalvoDO(coordinate, SalvoTypeEnum.KILL);
+                decreaseOtherPlayerShotRight(coordinate);
                 return salvoDO;
             }
             salvoDO.setSalvoType(SalvoTypeEnum.HIT);
         }
         return salvoDO;
+    }
+
+    /**
+     * decreases shot right of other player if attacker player kill a spaceship of other player
+     *
+     * @param coordinate of shot
+     */
+    private void decreaseOtherPlayerShotRight(Coordinate coordinate) {
+        PlayerDO playerDO = coordinate.getSpaceshipDO().getPlayerDO();
+        playerDO.setShotRight(playerDO.getShotRight() - 1);
+        coordinate.getSpaceshipDO().setPlayerDO(playerDO);
     }
 
     /**
@@ -300,8 +436,10 @@ public class GameService implements IGameService {
         self.setShotRight(self.getSpaceShips().size());
         opponent.setGameDO(gameDO);
         opponent.setShotRight(opponent.getSpaceShips().size());
-        gameDO.setStarting(pickStartingPlayer(gameDO.getPlayers()));
 
+        String playerTurn=pickStartingPlayer(gameDO.getPlayers());
+        gameDO.setStarting(playerTurn);
+        gameDO.setPlayerTurn(playerTurn);
         return gameDO;
 
     }

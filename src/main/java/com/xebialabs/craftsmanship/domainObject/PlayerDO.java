@@ -10,8 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "player",
-        uniqueConstraints = @UniqueConstraint(name = "userID", columnNames = {"userID"}))
+@Table(name = "player")
 public class PlayerDO {
 
     @Id
@@ -33,11 +32,11 @@ public class PlayerDO {
     @Nullable
     private GameDO gameDO;
 
-    @OneToMany(cascade = CascadeType.ALL)
+    @OneToMany(cascade = CascadeType.PERSIST)
     @JsonBackReference
     private List<Spaceship> spaceShips=new ArrayList<>();
 
-    @OneToMany(cascade = CascadeType.ALL)
+    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     @Nullable
     @JsonBackReference
     private List<SalvoDO> salvoDOs=new ArrayList<>();

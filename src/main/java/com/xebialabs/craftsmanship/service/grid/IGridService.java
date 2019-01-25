@@ -7,5 +7,4 @@ public interface IGridService {
 
     GridDO putSpaceshipsOnBoard(PlayerDO self, PlayerDO opponent);
 
-    String setBoard(GridDO gridDO);
 }

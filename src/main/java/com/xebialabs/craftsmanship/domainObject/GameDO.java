@@ -19,7 +19,7 @@ public class GameDO {
     @Column(nullable = false, unique = true)
     private String gameID;
 
-    @OneToMany(cascade = CascadeType.ALL)
+    @OneToMany(cascade = CascadeType.PERSIST)
     @JsonManagedReference
     private List<PlayerDO> players;
 

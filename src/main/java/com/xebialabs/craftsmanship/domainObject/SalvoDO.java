@@ -13,7 +13,8 @@ public class SalvoDO {
     @Column(nullable = false)
     private Long id;
 
-    @OneToOne(cascade = CascadeType.ALL, fetch = FetchType.LAZY, mappedBy = "salvoDO")
+    @OneToOne(cascade = CascadeType.PERSIST, fetch = FetchType.EAGER)
+    @JoinColumn(name = "coordinate_ID")
     private Coordinate coordinate;
 
     @Column(nullable = false)
@@ -23,10 +24,14 @@ public class SalvoDO {
     @JoinColumn(name = "owner_ID")
     private PlayerDO playerDO;
 
-    public SalvoDO(){}
+    @Column
+    private boolean hitOwnSpaceship=false;
+
+    public SalvoDO() {
+    }
 
     public SalvoDO(Coordinate coordinate, SalvoTypeEnum salvoType) {
-        this.coordinate= coordinate;
+        this.coordinate = coordinate;
         this.salvoType = salvoType;
     }
 
@@ -40,6 +45,10 @@ public class SalvoDO {
 
     public Coordinate getCoordinate() {
         return coordinate;
+    }
+
+    public void setCoordinate(Coordinate coordinate) {
+        this.coordinate = coordinate;
     }
 
     public PlayerDO getPlayerDO() {
@@ -58,4 +67,11 @@ public class SalvoDO {
         this.id = id;
     }
 
+    public boolean isHitOwnSpaceship() {
+        return hitOwnSpaceship;
+    }
+
+    public void setHitOwnSpaceship(boolean hitOwnSpaceship) {
+        this.hitOwnSpaceship = hitOwnSpaceship;
+    }
 }

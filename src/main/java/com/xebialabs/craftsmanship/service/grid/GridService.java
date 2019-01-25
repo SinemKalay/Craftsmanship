@@ -88,7 +88,8 @@ public class GridService implements IGridService {
      * @param gridDO
      * @param spaceship
      *
-     * @return
+     * @return boolean if there any other spaceship on the coordinate
+     *
      */
     private boolean areGridCoordinatesAvailableForSpaceship(GridDO gridDO, Spaceship spaceship) {
 
@@ -184,25 +185,5 @@ public class GridService implements IGridService {
             coordinate.setGridDO(gridDO);
         }
 
-    }
-
-    public String setBoard(GridDO gridDO) {
-
-        String[][] board = new String[GRID_HEIGHT][GRID_WIDTH];
-
-        setQuadrantToCoordinates(gridDO.getTaken(),board);
-        setQuadrantToCoordinates(gridDO.getFree(),board);
-        gridDO.setBoard(board);
-
-        return gridDO.render();
-    }
-
-    private void setQuadrantToCoordinates(List<Coordinate> coordinates,String[][] board ) {
-
-        for (Coordinate coordinate : coordinates) {
-            System.out.println("coordinate.getRow()" + coordinate.getRow() + " coordinate.getColumn(): " + coordinate.getColumn());
-            board[coordinate.getRow()][coordinate.getColumn()] = coordinate.getContent();
-            System.out.println("ok");
-        }
     }
 }

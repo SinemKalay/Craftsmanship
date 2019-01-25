@@ -38,8 +38,7 @@ public class Coordinate {
     @Nullable
     private Spaceship spaceshipDO;
 
-    @OneToOne
-    @JoinColumn(name = "salvo_ID")
+    @OneToOne(fetch = FetchType.EAGER,cascade = CascadeType.PERSIST, mappedBy = "coordinate")
     private SalvoDO salvoDO;
 
 

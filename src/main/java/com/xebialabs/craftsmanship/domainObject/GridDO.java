@@ -109,20 +109,4 @@ public class GridDO {
         return board;
     }
 
-    public String render() {
-        StringBuilder board = new StringBuilder();
-
-        for (int i = 0; i < GRID_WIDTH; i++) {
-            for (int j = 0; j < GRID_HEIGHT; j++) {
-                board.append(this.board[i][j]);
-                if (j == (GRID_WIDTH - 1)) {
-                    board.append("\n");
-                    continue;
-                }
-            }
-        }
-
-        return board.toString();
-    }
-
 }

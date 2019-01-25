@@ -15,7 +15,7 @@ public class SalvoMapper {
 
         for (SalvoDO salvoDO : salvoList) {
             Coordinate coordinate = salvoDO.getCoordinate();
-            String key = Integer.toHexString(coordinate.getRow()) + "x" + Integer.toHexString(coordinate.getColumn()).toUpperCase();
+            String key = Integer.toHexString(coordinate.getRow()).toUpperCase() + "x" + Integer.toHexString(coordinate.getColumn()).toUpperCase();
             salvoMap.put(key, salvoDO.getSalvoType().getDesc());
         }
         return salvoMap;
