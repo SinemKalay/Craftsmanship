@@ -6,6 +6,21 @@
    and at the beginning of the game coordinates of all spaceships are assigned. Then player can start to 
    sent salvos their opponent's. Player who can hit all points of opponent's spaceships will be won at
    the end of the game.   
+   
+##Overall Structure & Modules & Used technologies
+	In the application, there is transactional architecture. On the top of the project javafx project is running to provide viewing of the status.(Xebialab.jar)
+	
+	On the other hand, backend application consist of 3 layer 	
+	- Controller Layer: Catches Rest requests (PUT/POST/GET) and receives DTO objects/parameters.Then forward them to service interfaces in service layer (Rest Controllers: ProtocolController, UserController)
+	
+	-Service Layer: The layer actual algorithm works on. Via service interfaces controller sent DTO object to concrete service functions and map them do DO objects. After required operations and set up relation between domain object, this layer comminicate with persistance layer.
+	
+	-Persistance Layer: The layer comminicate with DB.In Craftmanship application, H2 in-memory database is used
+	for providing effortless setup for interviwers. Thanks to Spring Boot, CRUDRepository interface is provided and it is used for saving/creating/getting data between layers.
+
+	- Custom Exceptions: Custoom object are created for giving user more friendly experience with service apis.(TooMuchShotException,NotYourTurnException etc.) Exception handling provided with 
+	
+	- Domain Objects, DTO objects(Data Transfer Object), and mapper for transfering object between layers
 
 ## Overall Approach
 	The most important part of this solution is how relations between entitties were set up at the beginning.
@@ -72,3 +87,12 @@
     ** If shot hit to part of own spaceship, salvo type counted as MISS shot. **
     ** For viewing the status of the game,  userID also needed in get request for responsing more sensible way. **
  
+## Delivered Items
+	- Source code
+	- Xebialab.jar : for running UI
+	- Craftmanship.jar : for running backend apis
+	- run.bat: for automatically running the application.
+	- README.md : it is under the root of project or can be found in github link
+	
+## Link
+github repository link: https://github.com/SinemKalay/Craftsmanship
